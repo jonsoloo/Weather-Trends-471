@@ -61,11 +61,11 @@
             <p>
                 The page has two linked views. The main view is a scatter plot where every dot is one station on the selected day. The
                 user picks the variables for the x axis, y axis, and dot size from dropdowns, and color always shows the region. Below it
-                is a bar chart that shows a single station’s values for every day in the dataset, with one bar per day.
+                is a bar chart that shows a single station's values for every day in the dataset, with one bar per day.
             </p>
             <p>Implemented interactions:</p>
             <ul>
-                <li><strong>Date slider:</strong> drag to pick any day, and the scatter plot animates to that day’s data (dynamic query).</li>
+                <li><strong>Date slider:</strong> drag to pick any day, and the scatter plot animates to that day's data (dynamic query).</li>
                 <li><strong>Variable dropdowns:</strong> change the x axis, y axis, and dot size, and the axes and dots update (dynamic query and encoding change).</li>
                 <li><strong>Tooltips:</strong> hover over a dot to see the station name, state, date, and the three plotted values (details on demand).</li>
                 <li><strong>Region highlighting:</strong> click a region in the legend to fade out every other region. Click it again or press Reset to undo (highlighting and filtering).</li>
@@ -92,7 +92,7 @@
 
             <h2>Data Sources and References</h2>
             <ul>
-                <li>Weather data: NOAA Daily Global Historical Climatology Network, 2017, as provided on the CMSC471 course website (<code>weather.csv</code> and <code>weather.txt</code>).</li>
+                <li>Weather data: NOAA Daily Global Historical Climatology Network, 2017, as provided on the CMSC471 course website (<code>weather.csv</code>).</li>
                 <li>Region groupings: U.S. Census Bureau regions and divisions.</li>
                 <li><a href="https://d3js.org">D3.js v7</a> for all charts.</li>
                 <li><a href="https://github.com/johnwalley/d3-simple-slider">d3-simple-slider</a> by John Walley for the date slider.</li>
@@ -103,26 +103,30 @@
             <h2>Development Process</h2>
             <p>
                 Our team is Ricky, Jonathan, and Emmanuel. Ricky set up the GitHub repository, added the dataset, and brought in our Lab 4
-                and 5 scatter plot code as the starting point. From there we worked together to adapt it to the weather data: mapping
-                states to regions, parsing dates and switching the slider from years to days, filtering out stations with missing values
-                or broken readings, and adding readable names for every variable in the dropdowns, axis labels, and tooltip. Jonathan
-                built the highlighting features, including clicking a region in the legend, the Reset button, and the Hurricane Harvey
-                button with its map view and annotation. Emmanuel built the second chart, the linked bar chart that shows a station’s
-                full year, its measurement dropdown, and the black bar that follows the slider, and wrote this write-up. Ricky wrote the
-                README and pushed the commits, and the project is hosted with GitHub Pages under Jonathan’s account.
+                and 5 scatter plot code as the starting point. From there we worked together to adapt it to the weather data, with Ricky
+                supporting most of the development. That meant mapping states to regions, parsing dates and switching the slider from years to days,
+                filtering out stations with missing values or broken readings, and adding readable names for every variable in the
+                dropdowns, axis labels, and tooltip. Jonathan built the highlighting features with Ricky's help, including clicking a
+                region in the legend, the Reset button, and the Hurricane Harvey button with its map view and annotation. Emmanuel built
+                the second chart with Ricky's help, the linked bar chart that shows a station's full year, its measurement dropdown, and
+                the black bar that follows the slider. Jonathan recorded the demo video, and the project is hosted with GitHub Pages under
+                Jonathan's account. Emmanuel wrote this write-up and Ricky reviewed it. Ricky wrote the README and pushed the commits.
             </p>
             <p>
-                In total we spent about 6 people-hours on the project. The parts that took the most time were getting the lab code to
+                In total we spent about 6 people-hours on the project where we in a online meeting for most of it. The parts that took the most time were getting the lab code to
                 work with a much larger dataset that has missing values, since stations without a reading for one of the chosen variables
                 had to be dropped per day rather than filling the chart with bad points, and keeping the two charts in sync so the black
                 bar always matched the slider. One early surprise was that the CSV is not sorted by date, which made the bar chart look
-                scrambled until we sorted each station’s rows. The biggest success was the Harvey button, which turned a chart that
-                needed explaining into a story that explains itself.
+                scrambled until we sorted each station's rows. The biggest success was the Harvey button, which turned a chart that
+                needed explaining into a story that explains itself, and this was super cool to see working.
             </p>
 
             <h2>AI Usage</h2>
             <p>
-                No AI tools were used for the code. All design decisions and the final code were written and reviewed by the team.
+                All of the ideas and the overall scope came from our team, including the questions we wanted to answer, the Hurricane
+                Harvey view, and the BWI bar chart. Our starting code came from our own Labs 2, 4, and 5. We used Claude, an AI assistant,
+                to help adapt that lab code to the weather data, debug problems, and make sure the two charts worked together when we coded. Claude also
+                helped draft, edit, and refine parts of this write-up. We reviewed, edited, and tested every change ourselves.
             </p>
         </section>
 
