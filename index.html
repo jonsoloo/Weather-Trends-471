@@ -39,6 +39,93 @@
         <div id="bars"></div> <!-- Will hold the bar chart -->
         <p class="caption">Each bar is one day where  the black bar displayed is the day picked on the slider and is always in sync.</p>
 
+        <!-- Write-up -->
+        <section id="writeup">
+            <h2>About the Data</h2>
+            <p>
+                This project uses daily weather measurements from U.S. weather stations in 2017, provided by the NOAA Daily Global
+                Historical Climatology Network and distributed through the course website as <code>weather.csv</code>. Each row is one
+                station on one day. We use the station name, state, date, latitude, longitude, and elevation, along with five daily
+                measurements: max temperature (TMAX), min temperature (TMIN), precipitation (PRCP), snowfall (SNOW), and average wind
+                speed (AWND). The data covers January 1 through September 21, 2017.
+            </p>
+            <p>
+                Rather than try to show everything at once, we focused on two questions: how do weather conditions across the country
+                compare on any single day, and how does one station change over the course of the year? To support the first question
+                we grouped states into the four U.S. Census regions (West, Midwest, South, Northeast) so that geographic patterns are
+                easy to spot. We also dropped a small number of rows with clearly broken temperature readings (values above 130°F or
+                below -80°F) and rows from territories that do not belong to one of the four regions.
+            </p>
+
+            <h2>Design and Interactions</h2>
+            <p>
+                The page has two linked views. The main view is a scatter plot where every dot is one station on the selected day. The
+                user picks the variables for the x axis, y axis, and dot size from dropdowns, and color always shows the region. Below it
+                is a bar chart that shows a single station’s values for every day in the dataset, with one bar per day.
+            </p>
+            <p>Implemented interactions:</p>
+            <ul>
+                <li><strong>Date slider:</strong> drag to pick any day, and the scatter plot animates to that day’s data (dynamic query).</li>
+                <li><strong>Variable dropdowns:</strong> change the x axis, y axis, and dot size, and the axes and dots update (dynamic query and encoding change).</li>
+                <li><strong>Tooltips:</strong> hover over a dot to see the station name, state, date, and the three plotted values (details on demand).</li>
+                <li><strong>Region highlighting:</strong> click a region in the legend to fade out every other region. Click it again or press Reset to undo (highlighting and filtering).</li>
+                <li><strong>Linked station view:</strong> click any dot to load that station into the bar chart. The bar for the day currently on the slider is drawn in black so the two views stay in sync (linking).</li>
+                <li><strong>Bar chart dropdown:</strong> switch which measurement the bars show.</li>
+                <li><strong>Hurricane Harvey button:</strong> a guided view that switches the axes to longitude and latitude so the plot looks like a map, sizes dots by rainfall, highlights Texas, moves the slider to August 27, loads Houston into the bar chart, and adds an annotation pointing to Houston (narrative feature with annotation).</li>
+                <li><strong>Animated transitions:</strong> dots grow, shrink, and move smoothly when the day or variables change so it is easier to follow what moved.</li>
+            </ul>
+            <p>
+                <strong>Why we made these choices:</strong> a scatter plot was the natural fit because the interesting questions are about
+                relationships between two measurements (for example, latitude vs. max temperature), and letting the user swap variables
+                means one chart can answer many questions. We used color for region because it is a categorical variable with only four
+                values, which keeps the legend readable. Dot size was reserved for precipitation by default because rain is sparse, so
+                most dots stay small and the rainy ones stand out.
+            </p>
+            <p>
+                <strong>Alternatives we considered:</strong> we thought about drawing a real geographic map, but the assignment notes that a
+                map is not required, and the longitude and latitude options in the dropdowns already give a rough map view when the user
+                wants one. We considered brushing on the scatter plot to select groups of stations, but clicking a region in the legend
+                was simpler and matched the question we cared about. For the station view we considered a line chart, but many stations
+                have missing days, and bars make gaps obvious instead of drawing a misleading line across them. We also considered
+                showing several days at once, but a single day with a slider kept the plot from becoming too crowded.
+            </p>
+
+            <h2>Data Sources and References</h2>
+            <ul>
+                <li>Weather data: NOAA Daily Global Historical Climatology Network, 2017, as provided on the CMSC471 course website (<code>weather.csv</code> and <code>weather.txt</code>).</li>
+                <li>Region groupings: U.S. Census Bureau regions and divisions.</li>
+                <li><a href="https://d3js.org">D3.js v7</a> for all charts.</li>
+                <li><a href="https://github.com/johnwalley/d3-simple-slider">d3-simple-slider</a> by John Walley for the date slider.</li>
+                <li>Bootstrap 5.3 for page layout and buttons.</li>
+                <li>The scatter plot, bar chart, and legend code builds on the CMSC471 lab templates (Labs 2, 4, and 5). The region highlighting, linked station bar chart, date slider, Hurricane Harvey view, and annotation were added for this assignment.</li>
+            </ul>
+
+            <h2>Development Process</h2>
+            <p>
+                Our team is Ricky, Jonathan, and Emmanuel. Ricky set up the GitHub repository, added the dataset, and brought in our Lab 4
+                and 5 scatter plot code as the starting point. From there we worked together to adapt it to the weather data: mapping
+                states to regions, parsing dates and switching the slider from years to days, filtering out stations with missing values
+                or broken readings, and adding readable names for every variable in the dropdowns, axis labels, and tooltip. Jonathan
+                built the highlighting features, including clicking a region in the legend, the Reset button, and the Hurricane Harvey
+                button with its map view and annotation. Emmanuel built the second chart, the linked bar chart that shows a station’s
+                full year, its measurement dropdown, and the black bar that follows the slider, and wrote this write-up. Ricky wrote the
+                README and pushed the commits, and the project is hosted with GitHub Pages under Jonathan’s account.
+            </p>
+            <p>
+                In total we spent about 6 people-hours on the project. The parts that took the most time were getting the lab code to
+                work with a much larger dataset that has missing values, since stations without a reading for one of the chosen variables
+                had to be dropped per day rather than filling the chart with bad points, and keeping the two charts in sync so the black
+                bar always matched the slider. One early surprise was that the CSV is not sorted by date, which made the bar chart look
+                scrambled until we sorted each station’s rows. The biggest success was the Harvey button, which turned a chart that
+                needed explaining into a story that explains itself.
+            </p>
+
+            <h2>AI Usage</h2>
+            <p>
+                No AI tools were used for the code. All design decisions and the final code were written and reviewed by the team.
+            </p>
+        </section>
+
         <div id="tooltip" style="display:none"></div>
 
     </div>
