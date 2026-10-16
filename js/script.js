@@ -4,19 +4,40 @@ const height = 600 - margin.top - margin.bottom;
 
 let allData = []
 // let xVar, yVar, sizeVar, targetYear
-let xVar = 'income', yVar = 'lifeExp', sizeVar = 'population', targetYear = 2000
+let xVar = 'latitude', yVar = 'TMAX', sizeVar = 'PRCP'
 let xScale, yScale, sizeScale
-const continents = ['Africa', 'Asia', 'Oceania', 'Americas', 'Europe']
-const colorScale = d3.scaleOrdinal(continents, d3.schemeSet2); // d3.schemeSet2 is
 
-const options = ['income', 'lifeExp', 'gdp', 'population', 'childDeaths']
 // Rickyt Extension: user-friendly names shown in the dropdowns and axis labels
+const parseDate = d3.utcParse('%Y%m%d')
+const formatDate = d3.utcFormat('%b %d, %Y')
+const formatValue = d3.format(',.2~f')
+let targetDate = parseDate('20170101')
+
+const regions = ['West', 'Midwest', 'South', 'Northeast']
+const regionOf = {
+    AK: 'West', AZ: 'West', CA: 'West', CO: 'West', HI: 'West', ID: 'West', MT: 'West',
+    NV: 'West', NM: 'West', OR: 'West', UT: 'West', WA: 'West', WY: 'West',
+    IA: 'Midwest', IL: 'Midwest', IN: 'Midwest', KS: 'Midwest', MI: 'Midwest', MN: 'Midwest',
+    MO: 'Midwest', ND: 'Midwest', NE: 'Midwest', OH: 'Midwest', SD: 'Midwest', WI: 'Midwest',
+    AL: 'South', AR: 'South', DC: 'South', DE: 'South', FL: 'South', GA: 'South', KY: 'South',
+    LA: 'South', MD: 'South', MS: 'South', NC: 'South', OK: 'South', SC: 'South', TN: 'South',
+    TX: 'South', VA: 'South', WV: 'South',
+    CT: 'Northeast', MA: 'Northeast', ME: 'Northeast', NH: 'Northeast', NJ: 'Northeast',
+    NY: 'Northeast', PA: 'Northeast', RI: 'Northeast', VT: 'Northeast'
+}
+const colorScale = d3.scaleOrdinal(regions, d3.schemeSet2); // d3.schemeSet2 is
+
+const options = ['TMAX', 'TMIN', 'PRCP', 'SNOW', 'AWND', 'latitude', 'longitude', 'elevation']
+// user-friendly names shown in the dropdowns, axis labels, and tooltip
 const optionLabels = {
-    income: 'Income per Person',
-    lifeExp: 'Life Expectancy',
-    gdp: 'GDP per Capita',
-    population: 'Population',
-    childDeaths: 'Child Deaths'
+    TMAX: 'Max Temperature (°F)',
+    TMIN: 'Min Temperature (°F)',
+    PRCP: 'Precipitation (in)',
+    SNOW: 'Snowfall (in)',
+    AWND: 'Avg Wind Speed (mph)',
+    latitude: 'Latitude',
+    longitude: 'Longitude',
+    elevation: 'Elevation (m)'
 }
 
 
@@ -32,20 +53,26 @@ const svg = d3.select('#vis')
     .attr('transform', `translate(${margin.left},${margin.top})`);
 
 function init(){
-    d3.csv("./data/gapminder_subset.csv", d => ({
+    d3.csv("./data/weather.csv", d => ({
         // Besides converting the types, we also simpilify the variable names here. 
-        country: d.country,
-        continent: d.continent,
-        year: +d.year, // using + to convert to numbers; same below
-        lifeExp: +d.life_expectancy, 
-        income: +d.income_per_person, 
-        gdp: +d.gdp_per_capita, 
-        childDeaths: +d.number_of_child_deaths,
-        population: +d.population
+        station: d.station,
+        state: d.state,
+        region: regionOf[d.state],
+        date: parseDate(d.date),
+        latitude: +d.latitude, // using + to convert to numbers; same below
+        longitude: +d.longitude,
+        elevation: +d.elevation,
+        TMAX: d.TMAX === '' ? NaN : +d.TMAX,
+        TMIN: d.TMIN === '' ? NaN : +d.TMIN,
+        PRCP: d.PRCP === '' ? NaN : +d.PRCP,
+        SNOW: d.SNOW === '' ? NaN : +d.SNOW,
+        AWND: d.AWND === '' ? NaN : +d.AWND
     }))
     .then(data => {
             // console.log(data)
-            allData = data
+            // remove broken temp readings
+            allData = data.filter(d => d.region
+                && !(d.TMAX > 130 || d.TMAX < -80 || d.TMIN < -80))
             setupSelector()
             
             // Initial rendering steps:
@@ -67,25 +94,28 @@ function setupSelector(){
 
   let slider = d3
     .sliderHorizontal()
-    .min(d3.min(allData.map(d => +d.year))) // setup the range
-    .max(d3.max(allData.map(d => +d.year))) // setup the range
-    .step(1)
+    .min(d3.min(allData, d => d.date)) // setup the range
+    .max(d3.max(allData, d => d.date)) // setup the range
+    .step(1000 * 60 * 60 * 24) // one day in ms
     .width(width)
     .displayValue(false)
-    .default(targetYear) // start the slider at the initial year
-    .tickFormat(d3.format('d'))
+    .default(targetDate) // start the slider at the initial day
+    .tickFormat(d3.utcFormat('%b'))
     .on('onchange', (val) => {
-        targetYear = +val // Update the year
+        targetDate = val // Update the day
+        d3.select('#dateLabel').text(formatDate(targetDate))
         updateVis() // Refresh the chart
     });
 
     d3.select('#slider')
         .append('svg')
-        .attr('width', width)
+        .attr('width', width + 60)
         .attr('height', 100)
         .append('g')
         .attr('transform', 'translate(30,30)')
         .call(slider);
+
+    d3.select('#dateLabel').text(formatDate(targetDate))
 
     d3.selectAll('.variable')
     // loop over each dropdown button
@@ -128,11 +158,10 @@ function updateAxes(){
     svg.selectAll('.labels').remove()
 
     xScale = d3.scaleLinear()
-        .domain([0, d3.max(allData, d => d[xVar])])
+        .domain([d3.min(allData, d => d[xVar]), d3.max(allData, d => d[xVar])])
         .range([0, width]);
     const xAxis = d3.axisBottom(xScale)
         .ticks(6) // Extension: fewer ticks so labels don't crowd
-        .tickFormat(d3.format('~s')) // Extension: 160,000 -> 160k
 
     svg.append("g")
         .attr("class", "axis")
@@ -140,19 +169,18 @@ function updateAxes(){
         .call(xAxis);
 
     yScale = d3.scaleLinear()
-        .domain([0, d3.max(allData, d => d[yVar])])
+        .domain([d3.min(allData, d => d[yVar]), d3.max(allData, d => d[yVar])])
         .range([height, 0]);
     const yAxis = d3.axisLeft(yScale)
         .ticks(6)
-        .tickFormat(d3.format('~s'))
 
     svg.append("g")
         .attr("class", "axis")
         .call(yAxis);
 
     sizeScale = d3.scaleSqrt()
-        .domain([0, d3.max(allData, d => d[sizeVar])]) // Largest bubble = largest data point
-        .range([5, 20]); // Feel free to tweak these values if you want bigger or smaller bubbles
+        .domain([d3.min(allData, d => d[sizeVar]), d3.max(allData, d => d[sizeVar])]) // Largest bubble = largest data point
+        .range([3, 15]); // Feel free to tweak these values if you want bigger or smaller bubbles
 
     // X-axis label
     svg.append("text")
@@ -174,10 +202,12 @@ function updateAxes(){
 
 function updateVis(){
   // Draws (or updates) the bubbles
-    let currentData = allData.filter(d => d.year === targetYear)
+  // Only stations that reported all three chosen variables on this day
+    let currentData = allData.filter(d => d.date.getTime() === targetDate.getTime()
+        && !isNaN(d[xVar]) && !isNaN(d[yVar]) && !isNaN(d[sizeVar]))
 
     svg.selectAll('.points')
-        .data(currentData, d => d.country)
+        .data(currentData, d => d.station + d.state)
         .join(
             // When we have new data points
            // Enter: When new bubbles are added
@@ -187,17 +217,20 @@ function updateVis(){
                     .attr('class', 'points')
                     .attr('cx', d => xScale(d[xVar]))
                     .attr('cy', d => yScale(d[yVar]))
-                    .style('fill', d => colorScale(d.continent))
+                    .style('fill', d => colorScale(d.region))
                     .style('opacity', .5)
                     .attr('r', 0) // before transition r = 0
                     .on('mouseover', function (event, d) {
-                        d3.select(this) 
+                        d3.select(this)
                             .style('stroke', 'black')
-                            .style('stroke-width', '4px')
+                            .style('stroke-width', '2px')
                         d3.select('#tooltip')
                             .style("display", 'block') // Make the tooltip visible
-                            .html(`<strong>${d.country}</strong><br/>
-                            Continent: ${d.continent}`)
+                            .html(`<strong>${d.station}, ${d.state}</strong><br/>
+                            ${formatDate(d.date)}<br/>
+                            ${optionLabels[xVar]}: ${formatValue(d[xVar])}<br/>
+                            ${optionLabels[yVar]}: ${formatValue(d[yVar])}<br/>
+                            ${optionLabels[sizeVar]}: ${formatValue(d[sizeVar])}`)
                             .style("left", (event.pageX + 20) + "px")
                             .style("top", (event.pageY - 28) + "px");
                     })
@@ -234,8 +267,8 @@ function addLegend(){
     let size = 10  // Size of the legend squares
 
     // Your turn, draw a set of rectangles using D3
-    svg.selectAll('continentSquare')
-    .data(continents)
+    svg.selectAll('regionSquare')
+    .data(regions)
     .enter()
     .append('rect')
     .attr('y', -margin.top/2)
@@ -244,14 +277,14 @@ function addLegend(){
     .attr('height', size)
     .style("fill", d => colorScale(d))
 
-    svg.selectAll("continentName")
-        .data(continents)
+    svg.selectAll("regionName")
+        .data(regions)
         .enter()
         .append("text")
         .attr("y", -margin.top/2 + size) // Align vertically with the square
-        .attr("x", (d, i) => i * (size + 100) + 120)  
+        .attr("x", (d, i) => i * (size + 100) + 120)
         .style("fill", d => colorScale(d))  // Match text color to the square
-        .text(d => d) // The actual continent name
+        .text(d => d) // The actual region name
         .attr("text-anchor", "left")
         .style('font-size', '13px')
 }
