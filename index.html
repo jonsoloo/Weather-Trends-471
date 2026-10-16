@@ -19,13 +19,25 @@
             size: <select id="sizeVariable" class="variable"></select>
         </div>
 
+        <div class="controls">
+            <button class="btn btn-dark btn-sm" id="harveyButton">Show Hurricane Harvey (Aug 27)</button>
+            <button class="btn btn-dark btn-sm" id="resetButton">Reset highlight</button>
+        </div>
+
         <div id="vis"></div> <!--  Will hold our visualization (SVG) -->
 
         <p class="caption">
-            Every dot is a weather station for the day you picked. The color is the region of the U.S. it is in.
+            Every dot or bubble is a weather station for the day you picked. The color is representing the region of the U.S. it is in.
             If a station has no data for one of the things you picked, it won't show up.
             The data only goes from Jan 1 to Sep 21, 2017.
+            
+            Click a region in the legend to highlight it, and click it again to undo.
         </p>
+
+        <h4 id="barTitle"></h4>
+        <p>Click any dot above to see that station here. Bars show: <select id="barVariable"></select></p>
+        <div id="bars"></div> <!-- Will hold the bar chart -->
+        <p class="caption">Each bar is one day where  the black bar displayed is the day picked on the slider and is always in sync.</p>
 
         <div id="tooltip" style="display:none"></div>
 

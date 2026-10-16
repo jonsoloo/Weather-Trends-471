@@ -6,6 +6,11 @@ let allData = []
 // let xVar, yVar, sizeVar, targetYear
 let xVar = 'latitude', yVar = 'TMAX', sizeVar = 'PRCP'
 let xScale, yScale, sizeScale
+let slider
+let selectedRegion = null
+let selectedState = null
+let selectedStation = null
+let barVar = 'TMAX'
 
 // Rickyt Extension: user-friendly names shown in the dropdowns and axis labels
 const parseDate = d3.utcParse('%Y%m%d')
@@ -28,6 +33,7 @@ const regionOf = {
 const colorScale = d3.scaleOrdinal(regions, d3.schemeSet2); // d3.schemeSet2 is
 
 const options = ['TMAX', 'TMIN', 'PRCP', 'SNOW', 'AWND', 'latitude', 'longitude', 'elevation']
+const barOptions = ['TMAX', 'TMIN', 'PRCP', 'SNOW', 'AWND']
 // user-friendly names shown in the dropdowns, axis labels, and tooltip
 const optionLabels = {
     TMAX: 'Max Temperature (°F)',
@@ -52,6 +58,15 @@ const svg = d3.select('#vis')
     .append('g')
     .attr('transform', `translate(${margin.left},${margin.top})`);
 
+// Second SVG for the bar chart (same setup as Lab 2)
+const barHeight = 200
+const barSvg = d3.select('#bars')
+    .append('svg')
+    .attr('width', width + margin.left + margin.right)
+    .attr('height', barHeight + 40 + margin.bottom)
+    .append('g')
+    .attr('transform', `translate(${margin.left},40)`);
+
 function init(){
     d3.csv("./data/weather.csv", d => ({
         // Besides converting the types, we also simpilify the variable names here. 
@@ -73,6 +88,7 @@ function init(){
             // remove broken temp readings
             allData = data.filter(d => d.region
                 && !(d.TMAX > 130 || d.TMAX < -80 || d.TMIN < -80))
+            selectedStation = allData.filter(d => d.station === 'BALTIMORE WASH INTL AP')[0]
             setupSelector()
             
             // Initial rendering steps:
@@ -92,7 +108,7 @@ function setupSelector(){
   // Anytime the user tweaks something, this function reacts.
   // May need to call updateAxes() and updateVis() here when needed!
 
-  let slider = d3
+  slider = d3
     .sliderHorizontal()
     .min(d3.min(allData, d => d.date)) // setup the range
     .max(d3.max(allData, d => d.date)) // setup the range
@@ -104,6 +120,7 @@ function setupSelector(){
     .on('onchange', (val) => {
         targetDate = val // Update the day
         d3.select('#dateLabel').text(formatDate(targetDate))
+        svg.selectAll('.annotation').remove() // the Harvey note only fits Aug 27
         updateVis() // Refresh the chart
     });
 
@@ -149,6 +166,52 @@ function setupSelector(){
     d3.select('#xVariable').property('value', xVar)
     d3.select('#yVariable').property('value', yVar)
     d3.select('#sizeVariable').property('value', sizeVar)
+
+    // dropdown for the bar chart
+    d3.select('#barVariable')
+        .selectAll('myOptions')
+        .data(barOptions)
+        .enter()
+        .append('option')
+        .text(d => optionLabels[d])
+        .attr("value", d => d)
+
+    d3.select('#barVariable')
+        .property('value', barVar)
+        .on("change", function (event) {
+            barVar = d3.select(this).property("value")
+            updateBars()
+        })
+
+    d3.select('#harveyButton').on('click', function () {
+        // switch to a map view: longitude on x, latitude on y, bubble size = rain
+        xVar = 'longitude'
+        yVar = 'latitude'
+        sizeVar = 'PRCP'
+        d3.select('#xVariable').property('value', xVar)
+        d3.select('#yVariable').property('value', yVar)
+        d3.select('#sizeVariable').property('value', sizeVar)
+
+        selectedRegion = null
+        selectedState = 'TX'
+
+        // show Houston's rain in the bar chart
+        selectedStation = allData.filter(d => d.station === 'HOUSTON INTERCONT AP')[0]
+        barVar = 'PRCP'
+        d3.select('#barVariable').property('value', barVar)
+
+        updateAxes()
+        slider.value(parseDate('20170827')) // moves the slider
+        updateVis()
+        addHarveyNote()
+    })
+
+    d3.select('#resetButton').on('click', function () {
+        selectedRegion = null
+        selectedState = null
+        svg.selectAll('.annotation').remove()
+        updateHighlight()
+    })
 }
 
 function updateAxes(){
@@ -156,6 +219,7 @@ function updateAxes(){
   // Adds ticks, labels, and makes sure everything lines up nicely
     svg.selectAll('.axis').remove()
     svg.selectAll('.labels').remove()
+    svg.selectAll('.annotation').remove()
 
     xScale = d3.scaleLinear()
         .domain([d3.min(allData, d => d[xVar]), d3.max(allData, d => d[xVar])])
@@ -240,6 +304,10 @@ function updateVis(){
                         d3.select('#tooltip')
                             .style('display', 'none') // Hide tooltip when cursor leaves
                     })
+                    .on('click', function (event, d) {
+                        selectedStation = d // show this station in the bar chart
+                        updateBars()
+                    })
                     .transition().duration(t) // Animate the transition
                     .attr('r', d => sizeScale(d[sizeVar])) // Expand to target size
             },
@@ -261,6 +329,141 @@ function updateVis(){
                 .remove()  // Then remove the bubble
             }
         )
+
+    updateHighlight() // keep the faded bubbles faded after the update
+    updateBars() // so the black bar follows the slider
+}
+
+function updateBars(){
+  // Bar chart of one station, one bar per day from Lab 2 and Lab 5 as referencing point as needed to debug
+    let stationData = allData.filter(d => d.station === selectedStation.station
+        && d.state === selectedStation.state && !isNaN(d[barVar]))
+    stationData.sort((a, b) => a.date - b.date) // the CSV is not in date order
+
+    d3.select('#barTitle')
+        .text(`${selectedStation.station}, ${selectedStation.state}: ${optionLabels[barVar]} each day`)
+
+    barSvg.selectAll('.axis').remove()
+    barSvg.selectAll('.labels').remove()
+
+    let barX = d3.scaleBand()
+        .domain(stationData.map(d => d.date))
+        .range([0, width])
+        .padding(0.2)
+
+    // start at 0 unless the station has values below 0
+    let barY = d3.scaleLinear()
+        .domain([Math.min(0, d3.min(stationData, d => d[barVar])), d3.max(stationData, d => d[barVar])])
+        .range([barHeight, 0])
+
+    // only label the 1st of each month, otherwise 260 labels pile up
+    let barXAxis = d3.axisBottom(barX)
+        .tickValues(stationData.map(d => d.date).filter(date => date.getUTCDate() === 1))
+        .tickFormat(d3.utcFormat('%b'))
+
+    barSvg.append("g")
+        .attr("class", "axis")
+        .attr("transform", `translate(0,${barHeight})`)
+        .call(barXAxis);
+
+    barSvg.append("g")
+        .attr("class", "axis")
+        .call(d3.axisLeft(barY).ticks(5));
+
+    // Y-axis label (rotated)
+    barSvg.append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("x", -barHeight / 2)
+        .attr("y", -margin.left + 40)
+        .attr("text-anchor", "middle")
+        .text(optionLabels[barVar])
+        .attr('class', 'labels')
+
+    // the day picked on the slider is black
+    let barColor = d => d.date.getTime() === targetDate.getTime() ? 'black' : colorScale(d.region)
+
+    barSvg.selectAll('.bar')
+        .data(stationData, d => d.date)
+        .join(
+            // Enter: new bars start flat and grow
+            function (enter) {
+                return enter
+                    .append('rect')
+                    .attr('class', 'bar')
+                    .attr('x', d => barX(d.date))
+                    .attr('width', barX.bandwidth())
+                    .attr('y', barY(0))
+                    .attr('height', 0)
+                    .style('fill', d => barColor(d))
+                    .transition().duration(t)
+                    .attr('y', d => d[barVar] > 0 ? barY(d[barVar]) : barY(0))
+                    .attr('height', d => Math.abs(barY(d[barVar]) - barY(0)))
+            },
+            // Update: bars move to the new station's values
+            function (update) {
+                return update
+                    .style('fill', d => barColor(d))
+                    .transition().duration(t)
+                    .attr('x', d => barX(d.date))
+                    .attr('width', barX.bandwidth())
+                    .attr('y', d => d[barVar] > 0 ? barY(d[barVar]) : barY(0))
+                    .attr('height', d => Math.abs(barY(d[barVar]) - barY(0)))
+            },
+            // Exit: days this station has no data for
+            function (exit) {
+                exit
+                .transition().duration(t)
+                .attr('height', 0)
+                .remove()
+            }
+        )
+}
+
+function updateHighlight(){
+  // Fades out every bubble that is not picked
+    svg.selectAll('.points')
+        .style('opacity', d => {
+            if (selectedState !== null) {
+                return d.state === selectedState ? .8 : .05
+            }
+            if (selectedRegion !== null) {
+                return d.region === selectedRegion ? .8 : .05
+            }
+            return .5
+        })
+}
+
+function clickRegion(region){
+    // clicking the same region again turns the highlight off
+    if (selectedRegion === region) {
+        selectedRegion = null
+    } else {
+        selectedRegion = region
+    }
+    selectedState = null
+    svg.selectAll('.annotation').remove()
+    updateHighlight()
+}
+
+function addHarveyNote(){
+    let x = xScale(-95.4)
+    let y = yScale(29.8)
+
+    svg.append('line')
+        .attr('class', 'annotation')
+        .attr('x1', x)
+        .attr('y1', y + 8)
+        .attr('x2', x)
+        .attr('y2', y + 40)
+        .style('stroke', 'black')
+
+    svg.append('text')
+        .attr('class', 'annotation')
+        .attr('x', x)
+        .attr('y', y + 55)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '12px')
+        .text('Hurricane Harvey wass about 16 inches of rain in Houston on Aug 27!')
 }
 
 function addLegend(){
@@ -276,6 +479,8 @@ function addLegend(){
     .attr('width', size)
     .attr('height', size)
     .style("fill", d => colorScale(d))
+    .style('cursor', 'pointer')
+    .on('click', (event, d) => clickRegion(d))
 
     svg.selectAll("regionName")
         .data(regions)
@@ -287,6 +492,17 @@ function addLegend(){
         .text(d => d) // The actual region name
         .attr("text-anchor", "left")
         .style('font-size', '13px')
+        .style('cursor', 'pointer')
+        .on('click', (event, d) => clickRegion(d))
+
+    // hint so people know the legend can be clicked
+    svg.append("text")
+        .attr("x", width / 2)
+        .attr("y", -margin.top/2 + size + 20)
+        .attr("text-anchor", "middle")
+        .style('font-size', '11px')
+        .style("fill", "gray")
+        .text("click a region to highlight it, click it again to undo")
 }
 
 window.addEventListener('load', init);
